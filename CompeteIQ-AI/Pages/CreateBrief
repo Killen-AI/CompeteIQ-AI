@@ -1,0 +1,400 @@
+import React, { useState } from "react";
+import { CompetitorBrief } from "@/entities/CompetitorBrief";
+import { InvokeLLM } from "@/integrations/Core";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Search, Loader2, Globe, Building } from "lucide-react";
+
+const INDUSTRIES = [
+  "Technology & Software",
+  "Financial Services",
+  "Healthcare & Life Sciences",
+  "Retail & E-commerce",
+  "Manufacturing",
+  "Media & Entertainment",
+  "Professional Services",
+  "Real Estate",
+  "Energy & Utilities",
+  "Transportation & Logistics",
+  "Food & Beverage",
+  "Education",
+  "Other"
+];
+
+export default function CreateBrief() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    competitor_name: "",
+    competitor_website: "",
+    industry: "",
+    additional_context: ""
+  });
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.competitor_name.trim()) {
+      newErrors.competitor_name = "Company name is required";
+    }
+    
+    if (!formData.competitor_website.trim()) {
+      newErrors.competitor_website = "Website URL is required";
+    } else if (!formData.competitor_website.match(/^https?:\/\/.+\..+/)) {
+      newErrors.competitor_website = "Please enter a valid website URL";
+    }
+    
+    if (!formData.industry) {
+      newErrors.industry = "Industry selection is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      // Create initial brief record
+      const brief = await CompetitorBrief.create({
+        ...formData,
+        status: "researching"
+      });
+
+      // Start comprehensive analysis
+      await performCompetitorAnalysis(brief.id);
+      
+      // Navigate to the brief detail page
+      navigate(createPageUrl(`BriefDetail?id=${brief.id}`));
+      
+    } catch (error) {
+      console.error("Error creating brief:", error);
+      setIsAnalyzing(false);
+    }
+  };
+
+  const performCompetitorAnalysis = async (briefId) => {
+    try {
+      // Comprehensive research prompt
+      const researchPrompt = `
+        Conduct a comprehensive competitor analysis for ${formData.competitor_name} (${formData.competitor_website}) in the ${formData.industry} industry.
+        
+        ${formData.additional_context ? `Additional context: ${formData.additional_context}` : ''}
+        
+        Research and analyze the following:
+        1. Company overview, products, and services from their website
+        2. Recent investor reports and financial strategies
+        3. Press releases and announcements from the past 12 months  
+        4. Third-party reviews and analyst perspectives (Gartner, G2, industry reports)
+        5. Customer testimonials and case studies
+        6. Pricing information and business model
+        7. Target market and customer segments
+        8. Recent strategic moves and initiatives
+        
+        Provide a detailed analysis that will be used to create a competitive intelligence brief.
+      `;
+
+      const researchData = await InvokeLLM({
+        prompt: researchPrompt,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            company_overview: { type: "string" },
+            products_services: { type: "array", items: { type: "string" } },
+            recent_news: { type: "array", items: { type: "string" } },
+            financial_strategy: { type: "string" },
+            third_party_reviews: { type: "array", items: { type: "string" } },
+            pricing_info: { type: "string" },
+            target_market: { type: "string" },
+            strategic_moves: { type: "array", items: { type: "string" } }
+          }
+        }
+      });
+
+      // Update brief with research data and move to analyzing status
+      await CompetitorBrief.update(briefId, {
+        research_data: researchData,
+        status: "analyzing"
+      });
+
+      // Generate detailed analysis
+      const analysisPrompt = `
+        Based on the following research data about ${formData.competitor_name}, create a comprehensive competitive analysis:
+        
+        Research Data: ${JSON.stringify(researchData)}
+        
+        Generate:
+        1. SWOT Analysis (strengths, weaknesses, opportunities, threats)
+        2. Pricing analysis and model assessment
+        3. Value proposition and positioning analysis  
+        4. Target customer personas (3-4 key personas)
+        5. Competitive predictions for next 6-12 months based on their recent moves
+        6. Four PowerPoint slide summaries for executive presentation
+      `;
+
+      const analysis = await InvokeLLM({
+        prompt: analysisPrompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            swot_analysis: {
+              type: "object",
+              properties: {
+                strengths: { type: "array", items: { type: "string" } },
+                weaknesses: { type: "array", items: { type: "string" } },
+                opportunities: { type: "array", items: { type: "string" } },
+                threats: { type: "array", items: { type: "string" } }
+              }
+            },
+            pricing_analysis: {
+              type: "object", 
+              properties: {
+                pricing_model: { type: "string" },
+                price_range: { type: "string" },
+                pricing_strategy: { type: "string" }
+              }
+            },
+            value_proposition: {
+              type: "object",
+              properties: {
+                key_value_props: { type: "array", items: { type: "string" } },
+                positioning_statement: { type: "string" },
+                differentiation: { type: "array", items: { type: "string" } }
+              }
+            },
+            target_personas: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  persona_name: { type: "string" },
+                  description: { type: "string" },
+                  key_characteristics: { type: "array", items: { type: "string" } }
+                }
+              }
+            },
+            competitive_predictions: {
+              type: "object",
+              properties: {
+                likely_moves: { type: "array", items: { type: "string" } },
+                rationale: { type: "string" },
+                timeline: { type: "string" }
+              }
+            },
+            brief_slides: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  slide_number: { type: "number" },
+                  title: { type: "string" },
+                  content: { type: "string" },
+                  key_points: { type: "array", items: { type: "string" } }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Final update with complete analysis
+      await CompetitorBrief.update(briefId, {
+        ...analysis,
+        status: "completed"
+      });
+
+    } catch (error) {
+      console.error("Error performing analysis:", error);
+      await CompetitorBrief.update(briefId, {
+        status: "error"
+      });
+    }
+  };
+
+  return (
+    <div className="p-8 min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate(createPageUrl("Dashboard"))}
+            className="neu-button neu-raised p-2 rounded-lg"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">New Competitor Analysis</h1>
+            <p className="text-gray-600">Generate comprehensive competitive intelligence</p>
+          </div>
+        </div>
+
+        <Card className="neu-card neu-raised border-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5" />
+              Competitor Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="competitor_name" className="text-sm font-medium text-gray-700">
+                    Company Name *
+                  </Label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="competitor_name"
+                      className={`neu-input neu-inset pl-10 py-3 ${errors.competitor_name ? 'border-red-300' : ''}`}
+                      placeholder="e.g., Microsoft, Apple, Google"
+                      value={formData.competitor_name}
+                      onChange={(e) => handleInputChange('competitor_name', e.target.value)}
+                    />
+                  </div>
+                  {errors.competitor_name && (
+                    <p className="text-sm text-red-600">{errors.competitor_name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="competitor_website" className="text-sm font-medium text-gray-700">
+                    Website URL *
+                  </Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="competitor_website"
+                      className={`neu-input neu-inset pl-10 py-3 ${errors.competitor_website ? 'border-red-300' : ''}`}
+                      placeholder="https://example.com"
+                      value={formData.competitor_website}
+                      onChange={(e) => handleInputChange('competitor_website', e.target.value)}
+                    />
+                  </div>
+                  {errors.competitor_website && (
+                    <p className="text-sm text-red-600">{errors.competitor_website}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="industry" className="text-sm font-medium text-gray-700">
+                  Industry *
+                </Label>
+                <Select value={formData.industry} onValueChange={(value) => handleInputChange('industry', value)}>
+                  <SelectTrigger className={`neu-input neu-inset py-3 ${errors.industry ? 'border-red-300' : ''}`}>
+                    <SelectValue placeholder="Select industry category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRIES.map((industry) => (
+                      <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.industry && (
+                  <p className="text-sm text-red-600">{errors.industry}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="additional_context" className="text-sm font-medium text-gray-700">
+                  Additional Context (Optional)
+                </Label>
+                <Textarea
+                  id="additional_context"
+                  className="neu-input neu-inset py-3 min-h-[100px] resize-none"
+                  placeholder="Any specific areas of focus, recent news, or context that would help with the analysis..."
+                  value={formData.additional_context}
+                  onChange={(e) => handleInputChange('additional_context', e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-4 pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(createPageUrl("Dashboard"))}
+                  className="neu-button neu-raised px-6 py-3"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isAnalyzing}
+                  className="neu-button neu-raised bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-none px-8 py-3"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Start Analysis
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {isAnalyzing && (
+          <Card className="neu-card neu-raised border-none mt-6">
+            <CardContent className="py-8">
+              <div className="text-center">
+                <div className="neu-inset rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Analysis in Progress</h3>
+                <p className="text-gray-600 mb-4">
+                  We're researching {formData.competitor_name} across multiple sources. This typically takes 2-3 minutes.
+                </p>
+                <div className="max-w-md mx-auto">
+                  <div className="flex justify-between text-sm text-gray-500 mb-2">
+                    <span>Gathering data...</span>
+                    <span>Step 1 of 2</span>
+                  </div>
+                  <div className="neu-inset rounded-full h-2">
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

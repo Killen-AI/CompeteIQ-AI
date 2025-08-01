@@ -1,0 +1,206 @@
+{
+  "name": "CompetitorBrief",
+  "type": "object",
+  "properties": {
+    "competitor_name": {
+      "type": "string",
+      "description": "Name of the competitor company"
+    },
+    "competitor_website": {
+      "type": "string",
+      "description": "Primary website URL of the competitor"
+    },
+    "industry": {
+      "type": "string",
+      "description": "Industry or sector the competitor operates in"
+    },
+    "research_data": {
+      "type": "object",
+      "description": "Raw research data collected from various sources",
+      "properties": {
+        "company_overview": {
+          "type": "string"
+        },
+        "products_services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recent_news": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "financial_strategy": {
+          "type": "string"
+        },
+        "third_party_reviews": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pricing_info": {
+          "type": "string"
+        },
+        "target_market": {
+          "type": "string"
+        },
+        "strategic_moves": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "swot_analysis": {
+      "type": "object",
+      "description": "SWOT analysis findings",
+      "properties": {
+        "strengths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weaknesses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "opportunities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "threats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pricing_analysis": {
+      "type": "object",
+      "description": "Pricing strategy and model analysis",
+      "properties": {
+        "pricing_model": {
+          "type": "string"
+        },
+        "price_range": {
+          "type": "string"
+        },
+        "pricing_strategy": {
+          "type": "string"
+        }
+      }
+    },
+    "value_proposition": {
+      "type": "object",
+      "description": "Value proposition and positioning analysis",
+      "properties": {
+        "key_value_props": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "positioning_statement": {
+          "type": "string"
+        },
+        "differentiation": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "target_personas": {
+      "type": "array",
+      "description": "Identified target customer personas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "persona_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "key_characteristics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "competitive_predictions": {
+      "type": "object",
+      "description": "Predicted competitive moves for next 6-12 months",
+      "properties": {
+        "likely_moves": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "timeline": {
+          "type": "string"
+        }
+      }
+    },
+    "brief_slides": {
+      "type": "array",
+      "description": "Generated PowerPoint slide content",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_number": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "key_points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "researching",
+        "analyzing",
+        "completed",
+        "error"
+      ],
+      "default": "draft",
+      "description": "Current status of the brief"
+    }
+  },
+  "required": [
+    "competitor_name",
+    "competitor_website",
+    "industry"
+  ]
+}
